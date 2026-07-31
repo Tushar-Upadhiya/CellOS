@@ -1,0 +1,16 @@
+build/
+Build/
+CMakeFiles/
+CMakeCache.txt
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.d
+*.su
+*.a
+*.so
+.vscode/
+.idea/
+.DS_Store
