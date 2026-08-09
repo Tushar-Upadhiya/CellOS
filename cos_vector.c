@@ -30,8 +30,13 @@ void(*const vector_table[])(void)={
     MemManage_Handler,
     BusFault_Handler,
     UsageFault_Handler,
+    0, //here all 0's represent reserved slots in the vector table
+    0,
+    0,
+    0,
     SVC_Handler,
     DebugMon_Handler,
+    0,
     PendSV_Handler,
     SysTick_Handler,
 
