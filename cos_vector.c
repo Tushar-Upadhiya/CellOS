@@ -10,9 +10,16 @@ void Default_Handler(void){
     }
 }
 
+// Core Cortex-M4 Processor Exceptions Handlers
 void NMI_Handler(void) __attribute__((weak,alias("Default_Handler")));
 void HardFault_Handler(void) __attribute__((weak,alias("Default_Handler")));
 void MemManage_Handler(void) __attribute__((weak,alias("Default_Handler")));
+void BusFault_Handler(void) __attribute__((weak,alias("Default_Handler")));
+void UsageFault_Handler(void) __attribute__((weak,alias("Default_Handler")));
+void SVC_Handler(void) __attribute__((weak,alias("Default_Handler")));
+void DebugMon_Handler(void) __attribute__((weak,alias("Default_Handler")));
+void PendSV_Handler(void) __attribute__((weak,alias("Default_Handler")));
+void SysTick_Handler(void) __attribute__((weak,alias("Default_Handler")));
 
 __attribute__((section(".isr_vector")))
 void(*const vector_table[])(void)={
@@ -21,5 +28,11 @@ void(*const vector_table[])(void)={
     NMI_Handler,
     HardFault_Handler,
     MemManage_Handler,
+    BusFault_Handler,
+    UsageFault_Handler,
+    SVC_Handler,
+    DebugMon_Handler,
+    PendSV_Handler,
+    SysTick_Handler,
 
 };
