@@ -44,5 +44,5 @@ SECTIONS{
     . = . + 0x400;
   } > RAM
 
-    _estack = ORIGIN(RAM)+LENGTH(RAM)
+    _estack = ORIGIN(RAM)+LENGTH(RAM);
 }

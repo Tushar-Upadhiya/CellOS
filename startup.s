@@ -1,3 +1,11 @@
+.syntax unified
+.thumb
+
+.global Reset_Handler
+.extern main
+
+.thumb_func
+Reset_Handler:
 LDR r0, =_sidata //r0= source address (Flash)
 LDR r1, =_sdata //r1=destination address (RAM)
 LDR r2, =_edata //r2= end address (RAM)
