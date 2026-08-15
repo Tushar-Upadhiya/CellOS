@@ -5,12 +5,13 @@ OBJCOPY = arm-none-eabi-objcopy
 SIZE    = arm-none-eabi-size
 
 # ---- Target chip flags ----
-MCU_FLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft
+MCU_FLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g
 
 # ---- Project files ----
-SRC_C   = cos_vector.c main.c
+SRC_C   = cos_vector.c main.c systick.c
 SRC_ASM = startup.s
 LDSCRIPT = my_linker.ld
+INCLUDES = -IInclude
 
 OBJ = $(SRC_C:.c=.o) $(SRC_ASM:.s=.o)
 
@@ -20,7 +21,7 @@ TARGET = cellos
 all: $(TARGET).bin
 
 %.o: %.c
-	$(CC) $(MCU_FLAGS) -c $< -o $@
+	$(CC) $(MCU_FLAGS) $(INCLUDES) -c $< -o $@
 
 %.o: %.s
 	$(AS) $(MCU_FLAGS) -c $< -o $@
