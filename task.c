@@ -3,6 +3,8 @@
 TCB tasks[MAX_TASKS];
 uint32_t task_stacks[MAX_TASKS][STACK_SIZE];
 uint32_t task_count = 0;
+TCB *current_task;
+TCB *next_task;
 
 void task_return_handler(void) {
     while (1) { }

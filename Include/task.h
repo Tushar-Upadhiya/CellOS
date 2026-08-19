@@ -3,6 +3,9 @@
 #define MAX_TASKS 4
 #define STACK_SIZE 256
 
+extern TCB *current_task;
+extern TCB *next_task;
+
 typedef enum {
     TASK_READY,
     TASK_RUNNING,
