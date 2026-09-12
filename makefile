@@ -1,13 +1,13 @@
-# ---- Toolchain ----
+# Toolchain 
 CC      = arm-none-eabi-gcc
 AS      = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 SIZE    = arm-none-eabi-size
 
-# ---- Target chip flags ----
+# Target chip flags 
 MCU_FLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g
 
-# ---- Project files ----
+#  Project files 
 SRC_C   = cos_vector.c main.c systick.c
 SRC_ASM = startup.s
 LDSCRIPT = my_linker.ld
@@ -17,7 +17,7 @@ OBJ = $(SRC_C:.c=.o) $(SRC_ASM:.s=.o)
 
 TARGET = cellos
 
-# ---- Build rules ----
+#  Build rules 
 all: $(TARGET).bin
 
 %.o: %.c

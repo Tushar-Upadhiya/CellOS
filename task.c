@@ -10,6 +10,11 @@ void task_return_handler(void) {
     while (1) { }
 }
 
+void os_start(void){
+    current_task = &tasks[0];
+    __asm_volatile("SVC #0");
+}
+
 void task_create(void (*task_func)(void)) {
     uint32_t id = task_count;
     task_count++;
