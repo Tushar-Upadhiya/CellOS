@@ -31,6 +31,7 @@ PendSV_Handler:
     LDR lr, =0xFFFFFFFD          // EXC_RETURN: return to Thread mode, using PSP
     BX lr
 
+    .thumb_func
     SVC_Handler:
         LDR r0 ,=current_task
         LDR r1,[r0]

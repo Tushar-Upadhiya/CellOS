@@ -12,7 +12,7 @@ void task_return_handler(void) {
 
 void os_start(void){
     current_task = &tasks[0];
-    __asm_volatile("SVC #0");
+    __asm volatile("SVC #0");
 }
 
 void task_create(void (*task_func)(void)) {

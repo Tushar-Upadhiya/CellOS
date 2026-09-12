@@ -8,8 +8,8 @@ SIZE    = arm-none-eabi-size
 MCU_FLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g
 
 #  Project files 
-SRC_C   = cos_vector.c main.c systick.c
-SRC_ASM = startup.s
+SRC_C   = cos_vector.c main.c systick.c task.c
+SRC_ASM = startup.s context_switch.s
 LDSCRIPT = my_linker.ld
 INCLUDES = -IInclude
 
