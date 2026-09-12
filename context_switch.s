@@ -2,6 +2,7 @@
 .thumb
 
 .global PendSV_Handler
+.global SVC_Handler
 .extern current_task
 .extern next_task
 
@@ -29,3 +30,18 @@ PendSV_Handler:
 
     LDR lr, =0xFFFFFFFD          // EXC_RETURN: return to Thread mode, using PSP
     BX lr
+
+    SVC_Handler:
+        LDR r0 ,=current_task
+        LDR r1,[r0]
+        LDR r0,[r1]
+        LDMIA r0!,{r4-r11}
+
+        MSR PSP, r0
+
+        MOVS r0, #2
+        MSR CONTROL,r0
+        ISB
+
+        LDR lr, =0xFFFFFFFD
+        BX lr
