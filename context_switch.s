@@ -15,11 +15,17 @@ PendSV_Handler:
     LDR r1, =current_task        // r1 = address of the current_task pointer variable
     LDR r2, [r1]                    // r2 = current_task itself (a TCB*)
     STR r0, [r2]                       // current_task->stack_pointer = r0
+    
+    MOVS r3,#0
+    STR r3,[r2,#4]
 
     // ---- Load the incoming task ----
     LDR r1, =next_task           // r1 = address of the next_task pointer variable
     LDR r2, [r1]                    // r2 = next_task itself (a TCB*)
     LDR r0, [r2]                       // r0 = next_task->stack_pointer
+
+    MOVS r3,#1
+    STR r3,[r2,#4]
 
     LDMIA r0!, {r4-r11}          // pop R4-R11 from the incoming task's stack
 
@@ -39,6 +45,9 @@ PendSV_Handler:
         LDMIA r0!,{r4-r11}
 
         MSR PSP, r0
+
+        MOVS r2,#1
+        STR r2,[r1,#4]
 
         MOVS r0, #2
         MSR CONTROL,r0
