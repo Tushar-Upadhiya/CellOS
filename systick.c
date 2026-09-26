@@ -20,7 +20,7 @@ void SysTick_Handler(void){
     uint32_t candidate = current_task->task_id;
     for (uint32_t i = 0; i < task_count; i++) {
         candidate = (candidate + 1) % task_count;
-        if (tasks[candidate].state == TASK_READY) {
+        if (tasks[candidate].state == TASK_READY||candidate == current_task->task_id) {
             next_task = &tasks[candidate];
             break;
         }
