@@ -1,23 +1,34 @@
-# Toolchain 
 CC      = arm-none-eabi-gcc
 AS      = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 SIZE    = arm-none-eabi-size
 
-# Target chip flags 
 MCU_FLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g
 
-#  Project files 
-SRC_C   = cos_vector.c main.c systick.c task.c
-SRC_ASM = startup.s context_switch.s
-LDSCRIPT = my_linker.ld
-INCLUDES = -IInclude
+INC_DIR     = Include
+SRC_DIR     = src
+DRIVER_DIR  = drivers
+STARTUP_DIR = startup
 
-OBJ = $(SRC_C:.c=.o) $(SRC_ASM:.s=.o)
+SRC_C   = $(SRC_DIR)/main.c \
+          $(SRC_DIR)/systick.c \
+          $(SRC_DIR)/task.c \
+          $(SRC_DIR)/mutex.c \
+          $(DRIVER_DIR)/uart.c \
+          $(STARTUP_DIR)/cos_vector.c
+
+SRC_ASM = $(STARTUP_DIR)/startup.s \
+          $(STARTUP_DIR)/context_switch.s
+
+LDSCRIPT = my_linker.ld
+INCLUDES = -I$(INC_DIR)
+
+OBJ = $(notdir $(SRC_C:.c=.o)) $(notdir $(SRC_ASM:.s=.o))
+
+VPATH = $(SRC_DIR):$(DRIVER_DIR):$(STARTUP_DIR)
 
 TARGET = cellos
 
-#  Build rules 
 all: $(TARGET).bin
 
 %.o: %.c
