@@ -40,3 +40,24 @@ void i2c1_init(void){
     I2C_TRISE = 17; 
     I2C_CR1 |= (1U<<0);
 }
+
+void i2c1_write_byte(uint8_t slave_addr, uint8_t reg_addr, uint8_t data){
+    while(I2C_CR1&(1U<<15));
+    I2C_CR1 |= (1U<<8);
+
+    while(!(I2C_SR1 & (1U<<0)));
+    I2C_DR = (slave_addr<<1);
+
+    while(!(I2C_SR1&(1U<<1)));
+    (void)I2C_SR1;
+    (void)I2C_SR2;
+
+    while (!(I2C_SR1 & (1U << 7)));
+    I2C_DR = reg_addr;
+
+    while (!(I2C_SR1 & (1U << 7)));
+    I2C_DR = data;
+
+    while (!(I2C_SR1 & (1U << 7)) || !(I2C_SR1 & (1U << 2)));
+    I2C_CR1 |= (1U << 9);
+}
