@@ -23,12 +23,6 @@ void reset_GPIOA(void){
     RCC_AHB1STR &=~(1U<<0);
 }
 
-void uart_init(void){
-
-    RCC_AHB1ENR|=(1U<<0);
-
-    RCC_APB2ENR|=(1U<<4);
-}
 
 void gpio_init(void){
     //configuring PA9 and PA10 to alternate function mode (Binary '10'=2)
@@ -63,6 +57,17 @@ void uart_enable(void){
     //13th bit -> UART ENABLE (UE), 3rd bit -> TRANSMITTER ENABLE (TE), 2nd bit -> RECEIVER ENABLE (RE)
     USART_CR1|=(1U<<13)|(1U<<3)|(1U<<2);
 }
+
+void uart_init(void){
+
+    RCC_AHB1ENR|=(1U<<0);
+
+    RCC_APB2ENR|=(1U<<4);
+    gpio_init();
+    uart_set_baudrate();
+    uart_enable();
+}
+
 
 void uart_writechar(char c){
     while(!(USART1_SR & (1U<<7)));

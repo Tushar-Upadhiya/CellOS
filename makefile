@@ -15,6 +15,7 @@ SRC_C   = $(SRC_DIR)/main.c \
           $(SRC_DIR)/task.c \
           $(SRC_DIR)/mutex.c \
           $(DRIVER_DIR)/uart.c \
+		  $(DRIVER_DIR)/i2c.c \
           $(STARTUP_DIR)/cos_vector.c
 
 SRC_ASM = $(STARTUP_DIR)/startup.s \

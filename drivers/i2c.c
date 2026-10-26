@@ -4,7 +4,7 @@
 #define RCC_AHB1ENR (*((volatile uint32_t*)(RCC_BASE + 0x30)))
 #define RCC_APB1ENR (*((volatile uint32_t*)(RCC_BASE + 0x40)))
 
-#define GPIOB_BASE 0x400200400
+#define GPIOB_BASE 0x40020400
 #define GPIOB_MODER (*((volatile uint32_t*)(GPIOB_BASE+0x00)))
 #define GPIOB_PUPDR (*((volatile uint32_t*)(GPIOB_BASE + 0x0C)))
 #define GPIOB_OTYPER (*((volatile uint32_t*)(GPIOB_BASE + 0x04)))
@@ -60,4 +60,39 @@ void i2c1_write_byte(uint8_t slave_addr, uint8_t reg_addr, uint8_t data){
 
     while (!(I2C_SR1 & (1U << 7)) || !(I2C_SR1 & (1U << 2)));
     I2C_CR1 |= (1U << 9);
+}
+
+uint8_t i2c1_read_byte(uint8_t slave_addr, uint8_t reg_addr) {
+    while (I2C_CR1 & (1U << 15));
+    
+    I2C_CR1 |= (1U << 8);
+    while (!(I2C_SR1 & (1U << 0)));
+
+    I2C_DR = (slave_addr << 1);
+    while (!(I2C_SR1 & (1U << 1)));
+    (void)I2C_SR1;
+    (void)I2C_SR2;
+
+    while (!(I2C_SR1 & (1U << 7)));
+    I2C_DR = reg_addr;
+    while (!(I2C_SR1 & (1U << 7)));
+
+    I2C_CR1 |= (1U << 8);
+    while (!(I2C_SR1 & (1U << 0)));
+
+    I2C_DR = (slave_addr << 1) | 1U;
+    while (!(I2C_SR1 & (1U << 1)));
+
+    I2C_CR1 &= ~(1U << 10);
+    I2C_CR1 |= (1U << 9);
+
+    (void)I2C_SR1;
+    (void)I2C_SR2;
+
+    while (!(I2C_SR1 & (1U << 6)));
+    uint8_t data = I2C_DR;
+    
+    I2C_CR1 |= (1U << 10);
+    
+    return data;
 }
