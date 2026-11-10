@@ -64,7 +64,7 @@ This is a learning and portfolio project. It is **not** a production RTOS and do
 | Multi-waiter mutex | `[NOT STARTED]` | Design done |
 | UART driver | `[FILL IN: DONE / VERIFIED]` | `[FILL IN: baud, pins]` |
 | I2C driver | `[IN PROGRESS]` | Known bugs, MPU6050 target |
-| SPI driver | `[NOT STARTED]` | |
+| SPI driver | `[WRITTEN, NOT YET VERIFIED]` | Loopback test and logic analyzer check planned |
 | Allocator (hosted prototype, first-fit free list) | `[IN PROGRESS]` | Coalescing still to finish |
 | Allocator inside CellOS (bare-metal heap) | `[IN PROGRESS]` | Linker heap region being added |
 | `calloc` | `[NOT STARTED]` | |
@@ -82,9 +82,10 @@ This is a learning and portfolio project. It is **not** a production RTOS and do
 - External LEDs on PA0 and PA1 for task demos
 - `[FILL IN: USB-to-serial adapter model]` for UART
 - MPU6050 breakout for I2C bring-up
+- Jumper wire (MOSI to MISO) for the SPI loopback test
 
 > **[SCREENSHOT 1: `docs/images/01-hardware-setup.jpg`]**
-> A photo of the full bench: Black Pill, ST-Link, the two LEDs on PA0/PA1, the USB-serial adapter and the MPU6050 if wired. Label the connections if you can (a caption is fine).
+> A photo of the full bench: Black Pill, ST-Link, the two LEDs on PA0/PA1, the USB-serial adapter, the MPU6050 and the SPI loopback jumper if wired. Label the connections if you can (a caption is fine).
 
 **Toolchain (as used)**
 
@@ -95,31 +96,41 @@ This is a learning and portfolio project. It is **not** a production RTOS and do
 | `st-flash` / `st-util` (stlink) | 1.8.0 |
 | Host OS | Arch Linux |
 
-Compile flags: `-mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g -nostdlib -T my_linker.ld`
+Compile flags: `-mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g -IInclude -nostdlib -T my_linker.ld`
 
 ---
 
 ## Repository layout
 
-`[FILL IN: adjust names and folders to match your actual repo]`
-
 ```
 CellOS/
 ├── README.md
+├── LICENSE
 ├── makefile
-├── my_linker.ld        # memory map and section placement
-├── startup.s           # Reset_Handler
-├── cos_vector.c        # vector table and default handlers
-├── context_switch.s    # SVC_Handler and PendSV_Handler
-├── systick.c / .h      # 1 ms tick, scheduler hook
-├── task.c / .h         # TCB, task_create, os_start, schedule
-├── mutex.c / .h        # blocking mutex
-├── uart.c / .h         # UART driver
-├── i2c.c / .h          # I2C driver (WIP)
-├── main.c              # demo tasks
+├── my_linker.ld            # memory map and section placement
+├── .gitignore
+├── Include/                # headers
+│   ├── mutex.h
+│   ├── systick.h
+│   └── task.h
+├── src/                    # kernel and demo application
+│   ├── main.c              # demo tasks
+│   ├── mutex.c             # blocking mutex
+│   ├── systick.c           # 1 ms tick, scheduler hook
+│   └── task.c              # TCB, task_create, os_start
+├── startup/                # boot and exception code
+│   ├── startup.s           # Reset_Handler
+│   ├── cos_vector.c        # vector table and default handlers
+│   └── context_switch.s    # SVC_Handler and PendSV_Handler
+├── drivers/
+│   ├── uart.c
+│   ├── i2c.c               # work in progress
+│   └── spi.c               # written, not yet verified
 └── docs/
-    └── images/         # screenshots used in this README
+    └── images/             # screenshots used in this README (create this folder)
 ```
+
+Build output (`*.o`, `cellos.elf`, `cellos.bin`) is generated in the project root and is git-ignored.
 
 ---
 
@@ -141,9 +152,10 @@ Notes learned the hard way:
 - Kill any leftover GDB server before flashing, otherwise `st-flash` cannot claim the USB device: `pkill st-util`.
 - After editing a Makefile source list, check the link line: a missing object file shows up as `undefined reference` errors.
 - `arm-none-eabi-nm cellos.elf` is the quickest way to confirm which symbols were actually linked.
+- Sources live in `src/`, `startup/` and `drivers/`, and headers in `Include/` (passed to the compiler with `-IInclude`). Every new `.c` or `.s` file has to be added to the Makefile's source lists.
 
 > **[SCREENSHOT 2: `docs/images/02-build-output.png`]**
-> Terminal after a clean `make clean && make`, showing every file compiled, the link line, and the `arm-none-eabi-size` output (text / data / bss). Capture the whole output without errors.
+> Terminal after a clean `make clean && make`, showing every file compiled (including the `drivers/` files), the link line, and the `arm-none-eabi-size` output (text / data / bss). Capture the whole output without errors.
 
 ---
 
@@ -191,12 +203,12 @@ RAM (0x20000000 - 0x20018000)
 
 `[VERIFIED ON HARDWARE]`
 
-`cos_vector.c` defines the exception vector table (entries 0 to 15) and places it in `.isr_vector` at `0x08000000`.
+`startup/cos_vector.c` defines the exception vector table (entries 0 to 15) and places it in `.isr_vector` at `0x08000000`.
 
 - Entry 0 is the initial stack pointer (`_estack`), entry 1 is `Reset_Handler`
 - Reserved slots (7 to 10 and 13) hold zero, so every later handler keeps its fixed index
 - Every handler is a weak alias of `Default_Handler` (an infinite loop), so any unhandled exception traps at a known address instead of jumping into garbage
-- A strong definition elsewhere (for example `SysTick_Handler` in `systick.c`) automatically overrides the weak alias at link time
+- A strong definition elsewhere (for example `SysTick_Handler` in `src/systick.c`) automatically overrides the weak alias at link time
 
 Verified against the real binary:
 
@@ -217,7 +229,7 @@ Read little-endian: word 0 is `0x20018000` (top of RAM, the initial SP), word 1 
 
 `[VERIFIED ON HARDWARE]`
 
-By the time `Reset_Handler` runs, the hardware has already loaded SP and PC from the vector table. RAM is still in an unknown state, so `startup.s` does the C runtime setup in ARM assembly:
+By the time `Reset_Handler` runs, the hardware has already loaded SP and PC from the vector table. RAM is still in an unknown state, so `startup/startup.s` does the C runtime setup in ARM assembly:
 
 1. Copy the initial values of `.data` from flash (`_sidata`) to RAM (`_sdata` to `_edata`), word by word
 2. Zero `.bss` (`_sbss` to `_ebss`), word by word
@@ -261,7 +273,7 @@ The onboard PC13 LED stayed dark even though the registers were correct. I suspe
 
 `[VERIFIED ON HARDWARE]`
 
-`systick.c` configures the Cortex-M SysTick timer straight from its registers (`SYST_CSR`, `SYST_RVR`, `SYST_CVR`).
+`src/systick.c` configures the Cortex-M SysTick timer straight from its registers (`SYST_CSR`, `SYST_RVR`, `SYST_CVR`).
 
 ```
 reload = (16,000,000 Hz / 1000 ticks per second) - 1 = 15999
@@ -289,7 +301,7 @@ typedef struct {
 } TCB;
 ```
 
-Memory is statically allocated: `TCB tasks[MAX_TASKS]` and `uint32_t task_stacks[MAX_TASKS][STACK_SIZE]` (256 words per task). Static allocation keeps task creation deterministic and avoids heap fragmentation in the kernel itself.
+Defined in `Include/task.h`, implemented in `src/task.c`. Memory is statically allocated: `TCB tasks[MAX_TASKS]` and `uint32_t task_stacks[MAX_TASKS][STACK_SIZE]` (256 words per task). Static allocation keeps task creation deterministic and avoids heap fragmentation in the kernel itself.
 
 `task_create(fn)` builds a **fake saved context** on the new task's stack, so the first switch into the task uses exactly the same restore path as every later one. Layout, low to high addresses:
 
@@ -310,7 +322,7 @@ Getting the order wrong sends execution to the wrong place without any warning, 
 
 `[VERIFIED ON HARDWARE]` (state-tracking additions: `[WRITTEN, NOT YET VERIFIED]`)
 
-Both handlers live in `context_switch.s`.
+Both handlers live in `startup/context_switch.s`.
 
 **`SVC_Handler`** bootstraps the first task. It loads `current_task->stack_pointer`, pops R4 to R11, sets PSP, writes CONTROL (`SPSEL = 1`, so Thread mode uses PSP), executes `ISB`, and returns with `EXC_RETURN = 0xFFFFFFFD`. The hardware then pops the remaining frame and lands at the task's first instruction.
 
@@ -373,7 +385,7 @@ Task states are updated in the switch code (`RUNNING` for the incoming task, `RE
 
 `[WRITTEN, NOT YET VERIFIED]`
 
-A first version spun on a flag inside a critical section. The current version blocks instead:
+`src/mutex.c` and `Include/mutex.h`. A first version spun on a flag inside a critical section. The current version blocks instead:
 
 - `CPSID i` / `CPSIE i` make the check-and-set of `locked` atomic with respect to the scheduler
 - If the lock is held, the task marks itself `TASK_BLOCKED`, records itself as the waiter, and yields via PendSV (no busy-waiting)
@@ -402,9 +414,9 @@ Everything risky (the shared-state writes) happens inside the interrupt-disabled
 
 ## Stage 10: Drivers
 
-All drivers are register-level, written from the reference manual. No HAL.
+All drivers are in `drivers/`, register-level, written from the reference manual. No HAL.
 
-### UART
+### UART (`drivers/uart.c`)
 
 `[FILL IN: DONE / VERIFIED]`
 
@@ -413,7 +425,7 @@ All drivers are register-level, written from the reference manual. No HAL.
 > **[SCREENSHOT 15: `docs/images/15-uart-terminal.png`]**
 > A serial terminal (`picocom` or `minicom`) showing text printed by the board. Include the command line you used to open the terminal so the baud rate is visible.
 
-### I2C
+### I2C (`drivers/i2c.c`)
 
 `[IN PROGRESS]`: basic transfers work, known bugs remain.
 
@@ -427,9 +439,23 @@ Target device: MPU6050 at address `0x68` (WHO_AM_I register `0x75`; the chip sta
 > **[SCREENSHOT 17: `docs/images/17-imu-readings.png`]**
 > UART output of the accelerometer and gyro values at rest (Z axis near 1 g, gyro near zero).
 
-### SPI
+### SPI (`drivers/spi.c`)
 
-`[NOT STARTED]` (a loopback test, MOSI to MISO, is the first step)
+`[WRITTEN, NOT YET VERIFIED]`
+
+The driver is written. Hardware verification is the next step.
+
+`[FILL IN: SPI instance (for example SPI1), SCK / MISO / MOSI / chip-select pins, clock polarity and phase (CPOL / CPHA), baud-rate prescaler and the resulting SCK frequency, and whether chip select is driven by hardware or by software GPIO]`
+
+**Planned verification** `[PLANNED]`:
+
+1. **Loopback test:** wire MOSI to MISO with a jumper, send a known byte sequence (for example `0xA5`, `0x5A`, then an incrementing counter), and print each TX / RX pair over UART. Expect every received byte to equal the byte sent.
+2. **Signal check on a logic analyzer (lab):** confirm the SCK idle level, the sampling edge (CPOL / CPHA), and that the measured SCK frequency matches the prescaler calculation.
+3. **Real device `[NOT STARTED]`:** read an ID register from a SPI sensor once one is on the bench `[FILL IN: device]`. (The MPU6050 used for I2C is I2C-only.)
+4. **Bus protection `[NOT STARTED]`:** guard each bus with a CellOS mutex so two tasks cannot use SPI or I2C at the same time.
+
+> **[SCREENSHOT 18: `docs/images/18-spi-loopback.png`]**
+> The UART terminal showing the SPI loopback test: the TX bytes sent and the RX bytes received, matching row by row. Take this once the loopback test passes.
 
 ---
 
@@ -461,7 +487,7 @@ Bugs found while building it:
 - `heap_dump()` over UART to show the block list live
 - `my_calloc` with an overflow check on `num * size` `[NOT STARTED]`
 
-> **[SCREENSHOT 18: `docs/images/18-heap-dump.png`]**
+> **[SCREENSHOT 19: `docs/images/19-heap-dump.png`]**
 > UART output of `heap_dump()` after a sequence of allocs and frees: once showing fragmented free blocks, and once after coalescing merged them.
 
 ### TLSF (Two-Level Segregated Fit)
@@ -501,15 +527,17 @@ Checklist:
 - SysTick period (expect 1 ms)
 - Context-switch duration: toggle a GPIO at the start and end of `PendSV_Handler` and measure the pulse width
 - Allocator timing: toggle a pin around `malloc` and `free` for first-fit versus TLSF under the same allocation pattern, cross-checked with the DWT cycle counter (`CYCCNT`)
-- UART and I2C waveforms (bit timing, ACK)
+- UART, I2C and SPI waveforms (bit timing, ACK, SCK polarity and phase)
 
-> **[SCREENSHOT 19: `docs/images/19-scope-systick.png`]**: scope capture of a pin toggled in `SysTick_Handler`, with the period measurement visible.
+> **[SCREENSHOT 20: `docs/images/20-scope-systick.png`]**: scope capture of a pin toggled in `SysTick_Handler`, with the period measurement visible.
 >
-> **[SCREENSHOT 20: `docs/images/20-scope-context-switch.png`]**: pulse width of the pin toggled across `PendSV_Handler`, with the measurement shown.
+> **[SCREENSHOT 21: `docs/images/21-scope-context-switch.png`]**: pulse width of the pin toggled across `PendSV_Handler`, with the measurement shown.
 >
-> **[SCREENSHOT 21: `docs/images/21-scope-malloc-compare.png`]**: first-fit versus TLSF allocation pulse widths, one capture each, or a combined screenshot.
+> **[SCREENSHOT 22: `docs/images/22-scope-malloc-compare.png`]**: first-fit versus TLSF allocation pulse widths, one capture each, or a combined screenshot.
 >
-> **[SCREENSHOT 22: `docs/images/22-benchmark-table.png`]**: a table or plot of cycle counts for both allocators under identical workloads (take this from your own benchmark output or a small plot).
+> **[SCREENSHOT 23: `docs/images/23-benchmark-table.png`]**: a table or plot of cycle counts for both allocators under identical workloads (take this from your own benchmark output or a small plot).
+>
+> **[SCREENSHOT 24: `docs/images/24-scope-bus-waveforms.png`]**: logic analyzer captures of a UART byte, an I2C transaction with its ACK, and an SPI transfer with SCK, MOSI, MISO and chip select, with the protocol decoder turned on if the analyzer has one.
 
 Results table (fill in after measuring):
 
@@ -519,6 +547,7 @@ Results table (fill in after measuring):
 | Context switch time | `[FILL IN]` | Scope, GPIO pulse |
 | Allocation time, first-fit | `[FILL IN]` | CYCCNT / scope |
 | Allocation time, TLSF | `[FILL IN]` | CYCCNT / scope |
+| SPI SCK frequency vs. configured | `[FILL IN]` | Logic analyzer |
 | Flash / RAM footprint | `[FILL IN]` | `arm-none-eabi-size` |
 
 ---
@@ -530,6 +559,8 @@ Results table (fill in after measuring):
 - No semaphores, message queues, or software timers
 - No MPU-based stack overflow protection; tasks have fixed 1 KB stacks
 - Allocator is not yet interrupt-safe in the final form (critical section is a stopgap)
+- SPI driver has not been tested on hardware yet; I2C still has known bugs
+- Drivers are polling-based, with no DMA or interrupt-driven transfers
 - Magic numbers for task states in the assembly (`0`, `1`) must stay in sync with the C enum
 - Tested only on one board; the onboard LED was not usable, so demos use external LEDs
 - Timing is tuned for the 16 MHz HSI clock; no PLL configuration yet
@@ -542,14 +573,15 @@ Results table (fill in after measuring):
 
 1. Fix the two scheduler/mutex bugs and run the verification tests `[IN PROGRESS]`
 2. Multi-waiter mutex `[NOT STARTED]`
-3. I2C bug fixes, MPU6050 readings over UART `[IN PROGRESS]`
-4. First-fit allocator inside CellOS, with coalescing, `heap_dump()` and `calloc` `[IN PROGRESS]`
-5. TLSF allocator and benchmark `[NOT STARTED]`
-6. Lab measurements, then update the results table above `[PLANNED]`
+3. I2C bug fixes and MPU6050 readings over UART `[IN PROGRESS]`
+4. SPI loopback verification `[PLANNED]`
+5. First-fit allocator inside CellOS, with coalescing, `heap_dump()` and `calloc` `[IN PROGRESS]`
+6. TLSF allocator and benchmark `[NOT STARTED]`
+7. Lab measurements, then update the results table above `[PLANNED]`
 
 **After v1 (not committed)**
 
-- SPI, ADC (timer-triggered, then DMA) and semaphores
+- ADC (timer-triggered, then DMA) and semaphores
 - Message queues
 - Priority scheduling with priority inheritance
 - A measured comparison against FreeRTOS on the same board (footprint or context-switch time)
@@ -595,5 +627,6 @@ Tushar Upadhiya, B.Tech ECE, Thapar Institute of Engineering and Technology.
 | 15 | `15-uart-terminal.png` | Serial terminal output | Now |
 | 16 | `16-i2c-whoami.png` | WHO_AM_I over UART | After I2C fix |
 | 17 | `17-imu-readings.png` | Accelerometer and gyro values | After I2C fix |
-| 18 | `18-heap-dump.png` | `heap_dump()` before and after coalescing | After allocator port |
-| 19 to 22 | scope and benchmark images | Lab measurements and benchmark table | Lab day |
+| 18 | `18-spi-loopback.png` | TX / RX bytes matching in the UART terminal | After SPI loopback test |
+| 19 | `19-heap-dump.png` | `heap_dump()` before and after coalescing | After allocator port |
+| 20 to 24 | scope and benchmark images | Lab measurements, benchmark table, bus waveforms | Lab day |
