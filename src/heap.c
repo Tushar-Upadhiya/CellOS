@@ -8,6 +8,9 @@ typedef struct header{
     header* next;
 }header;
 
+extern uint8_t __heap_start[];
+extern uint8_t __heap_end[];
+
 static void* heap_start = NULL;
 
 void heap_init(void){
@@ -20,4 +23,9 @@ void* myalloc(size_t size){
         heap_start = sbrk(0);
     }
     size_t aligned_size = (size + sizeof(header) + 7) & ~7;
+}
+
+void myfree(void* ptr){
+    if(ptr==NULL) return;
+
 }
